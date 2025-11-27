@@ -13,6 +13,22 @@
 #define MAX_ENEMIES 15 // 최대 적 개수 증가
 #define MAX_COINS 30   // 최대 코인 개수 증가
 
+// 비프음 함수 정의 (os별)
+#ifdef _WIN32
+	#include <windows.h>
+	
+void play_sound(){
+	Beep(600, 80); // 소리 설정
+}
+
+#else
+	void play_sound(){
+	//터미널에 종 문자 출력(ASCII)
+	printf("\a");
+	fflush(stdout):
+	}
+#endif
+
 // 구조체 정의
 typedef struct {
     int x, y;
@@ -87,11 +103,19 @@ int main() {
 
         update_game(c);
         draw_game();
-        usleep(90000);
+
+	#ifdef _WIN32
+		Sleep(90);
+	#else
+		usleep(90000);	
+        #endif
 
         if (map[stage][player_y][player_x] == 'E') {
             stage++;
             score += 100;
+	    //스테이지 클리어시 소리 재생
+	    play_sound();
+
             if (stage < MAX_STAGES) {
                 init_stage();
             } else {
@@ -294,6 +318,10 @@ void check_collisions() {
         if (!coins[i].collected && player_x == coins[i].x && player_y == coins[i].y) {
             coins[i].collected = 1;
             score += 20;
+
+
+	    //코인 획득시 소리 재생
+	    play_sound();
         }
     }
 }
