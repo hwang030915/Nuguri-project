@@ -104,6 +104,9 @@ void check_collisions();
 int kbhit();
 void clrscr(); 
 char win_getchar();
+void title(); //타이틀, 게임오버, 게임클리어 함수 선언  
+int gameover();
+void gameclear();
 
 int main() {
 #ifdef _WIN32
@@ -112,8 +115,14 @@ int main() {
 #endif
     srand(time(NULL));
     enable_raw_mode();
+    printf("\x1b[?25l"); //커서 깜빡임 지우기
+
+    title(); //게임 시작 전 타이틀 화면 함수 호출
+
     load_maps();
     init_stage();
+
+    clrscr();
 
     char c = '\0';
     int game_over = 0;
@@ -137,14 +146,13 @@ int main() {
             }
             else {
                 game_over = 1;
-                clrscr(); // 화면 클리어 함수 사용 -> 가독성 높이기
-                printf("축하합니다! 모든 스테이지를 클리어했습니다!\n");
-                printf("최종 점수: %d\n", score);
+                gameclear(); // 단순 출력문 지우고 클리어 함수 호출 
             }
         }
     }
 
     disable_raw_mode();
+    printf("\x1b[?25h"); // 커서 다시 보이기 
     return 0;
 }
 
@@ -252,7 +260,7 @@ void init_stage() {
 
 // 게임 화면 그리기
 void draw_game() {
-    printf("\x1b[2J\x1b[H");
+    printf("\x1b[H");
     printf("Stage: %d | Score: %d\n", stage + 1, score);
     printf("조작: ← → (이동), ↑ ↓ (사다리), Space (점프), q (종료)\n");
     printf("Life : %d\n", life );
@@ -384,12 +392,19 @@ void check_collisions() {
             life--;
 
             if (life <= 0){
-                  clrscr(); 
-                  printf("Game Over\n");
-                  printf("남은 생명 : %d\n", life);
-                  printf("최종 점수 : %d\n", score);
-                  disable_raw_mode(); // raw모드 해제
-                  exit(0); 
+                  int retry = gameover();
+                  if (retry == 1){ //재도전 로직
+                    life = 3;
+                    score = 0;
+                    stage = 0;
+                    init_stage(); //1스테이지 맵 다시 로드
+                  }
+                  else{ //종료 로직
+                    disable_raw_mode();
+                    printf("\x1b[?25h");
+                    exit(0);
+
+                  }
             }
 
             else {
@@ -410,4 +425,84 @@ void check_collisions() {
             score += 20;
         }
     }
+}
+
+void title(){
+    clrscr();
+    printf("\n\n");
+    printf("====================================================\n");
+    printf("==                                                ==\n");
+    printf("==            N U G U R I   G A M E               ==\n");
+    printf("==                                                ==\n");
+    printf("==------------------------------------------------==\n");
+    printf("==      영차영차 오늘도 모험을 떠나는 너구리      ==\n");
+    printf("==      하지만 위험한 뭔가가 돌아다니고 있어      ==\n");
+    printf("==------------------------------------------------==\n");
+    printf("==       아무키나 눌러 게임을 시작해보세요!       ==\n");
+    printf("====================================================\n");
+
+    while(1) {
+        char key = win_getchar();
+        if (key != '\0'){ //입력된 키가 있으면 루프 탈출 후 게임시작
+            break; 
+        }
+    }
+    clrscr(); //게임 시작 전 타이틀 화면 지우기
+}
+
+
+int gameover(){
+    clrscr();
+    printf("\n\n");
+    printf("====================================================\n");
+    printf("==                                                ==\n");
+    printf("==             G A M E    O V E R                 ==\n");
+    printf("==                                                ==\n");
+    printf("==------------------------------------------------==\n");
+    printf("==        앗! 목숨 3개를 모두 잃었어 -ㅅ-         ==\n");
+    printf("==------------------------------------------------==\n");
+    printf("==             최종 점수 : %-5d                  ==\n", score);
+    printf("==                                                ==\n");
+    printf("==            다시 도전해볼까? (r)                ==\n");
+    printf("==                나가기 (q)                      ==\n");
+    printf("====================================================\n");
+
+    while(1){
+        char c = win_getchar();
+        if (c== 'r' || c== 'R'){
+            return 1; //재도전 1 반환
+        }
+        if (c=='q' || c == 'Q'){
+            return 0;
+        }
+    }
+    return 0;
+}
+
+void gameclear(){
+    clrscr();
+    printf("\n\n");
+    printf("====================================================\n");
+    printf("==                                                ==\n");
+    printf("==            G A M E    C L E A R                ==\n");
+    printf("==                                                ==\n");
+    printf("==------------------------------------------------==\n");
+    printf("==         너구리가 무사히 도착했어 !             ==\n");
+    printf("==     대단해 모든 스테이지 클리어 성공~!         ==\n");
+    printf("==------------------------------------------------==\n");
+    printf("==             최종 점수 : %-5d                  ==\n", score);
+    printf("==                                                ==\n");
+    printf("==               나가기 (q)                       ==\n");
+    printf("====================================================\n");
+
+    while(1){
+        char c = win_getchar();
+        if (c=='q' || c == 'Q'){
+            disable_raw_mode();
+            printf("\x1b[?25h");
+            exit(0);
+
+        }
+    }
+
 }
