@@ -14,21 +14,46 @@
 #define MAX_COINS 30   // 최대 코인 개수 증가
 
 // 비프음 함수 정의 (os별)
-#ifdef _WIN32
-	#include <windows.h>
-	
-void play_sound(){
-	Beep(600, 80); // 소리 설정
-}
+#ifdef _WIN32     
+    // 1. 코인 획득 소리: 높은 소리
+    void play_coin_sound() {
+        Beep(1000, 70);
+    }
 
-#else
-	void play_sound(){
-	//터미널에 종 문자 출력(ASCII)
-	printf("\a");
-	fflush(stdout):
-	}
+    // 2. 스테이지 클리어 소리 : 2중 음
+    void play_clear_sound() {
+        Beep(700, 100); 
+        delay(50); 
+        Beep(1200, 150); 
+    }
+
+    // 3. 충돌/데미지 소리: 낮은 소리
+    void play_damage_sound() {
+        Beep(300, 150);
+    }
+
+#else // Linux/macOS 환경
+    // POSIX 환경: 터미널 벨 문자 (\a) 사용
+    #include <unistd.h>
+    
+    // 1. 코인 획득
+    void play_coin_sound() {
+        printf("\a");
+        fflush(stdout);
+    }
+
+    // 2. 스테이지 클리어
+    void play_clear_sound() {
+        printf("\a");
+        fflush(stdout);
+    }
+
+    // 3. 충돌/데미지
+    void play_damage_sound() {
+        printf("\a");
+        fflush(stdout);
+    }
 #endif
-
 // 구조체 정의
 typedef struct {
     int x, y;
@@ -114,7 +139,7 @@ int main() {
             stage++;
             score += 100;
 	    //스테이지 클리어시 소리 재생
-	    play_sound();
+	    play_clear_sound();
 
             if (stage < MAX_STAGES) {
                 init_stage();
@@ -312,6 +337,7 @@ void check_collisions() {
             score = (score > 50) ? score - 50 : 0;
             init_stage();
             return;
+	    //충돌시 play_damage_sound(); 추가
         }
     }
     for (int i = 0; i < coin_count; i++) {
@@ -321,7 +347,7 @@ void check_collisions() {
 
 
 	    //코인 획득시 소리 재생
-	    play_sound();
+	    play_coin_sound();
         }
     }
 }
