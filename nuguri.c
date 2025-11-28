@@ -337,7 +337,7 @@ void check_collisions() {
             score = (score > 50) ? score - 50 : 0;
             init_stage();
             return;
-	    //충돌시 play_damage_sound(); 추가
+	    play_damage_sound(); //충돌시 사운드 추가
         }
     }
     for (int i = 0; i < coin_count; i++) {
