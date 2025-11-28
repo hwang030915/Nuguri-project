@@ -77,6 +77,8 @@ char map[MAX_STAGES][MAP_HEIGHT][MAP_WIDTH + 1];
 int player_x, player_y;
 int stage = 0;
 int score = 0;
+int life = 3; //플레이어 생명 3개 부여
+int start_x, start_y;// 시작 위치 
 
 // 플레이어 상태
 int is_jumping = 0;
@@ -100,6 +102,7 @@ void move_player(char input);
 void move_enemies();
 void check_collisions();
 int kbhit();
+void clrscr(); 
 char win_getchar();
 
 int main() {
@@ -134,7 +137,7 @@ int main() {
             }
             else {
                 game_over = 1;
-                printf("\x1b[2J\x1b[H");
+                clrscr(); // 화면 클리어 함수 사용 -> 가독성 높이기
                 printf("축하합니다! 모든 스테이지를 클리어했습니다!\n");
                 printf("최종 점수: %d\n", score);
             }
@@ -189,6 +192,11 @@ char win_getchar() {  //윈도우는 raw모드가 아니라서 getchar 사용시
 #endif
 }
 
+//화면 지우기 
+void clrscr() {
+	printf("\x1b[2J\x1b[H");
+}
+
 // 맵 파일 로드
 void load_maps() {
     FILE* file = fopen("map.txt", "r");
@@ -227,9 +235,12 @@ void init_stage() {
             if (cell == 'S') {
                 player_x = x;
                 player_y = y;
+                   
+                start_x = x;  
+                start_y = y;
             }
-            else if (cell == 'X' && enemy_count < MAX_ENEMIES) {
-                enemies[enemy_count] = (Enemy){ x, y, (rand() % 2) * 2 - 1 };
+             else if (cell == 'X' && enemy_count < MAX_ENEMIES) {
+                enemies[enemy_count] = (Enemy){x, y, (rand() % 2) * 2 - 1};
                 enemy_count++;
             }
             else if (cell == 'C' && coin_count < MAX_COINS) {
@@ -244,6 +255,7 @@ void draw_game() {
     printf("\x1b[2J\x1b[H");
     printf("Stage: %d | Score: %d\n", stage + 1, score);
     printf("조작: ← → (이동), ↑ ↓ (사다리), Space (점프), q (종료)\n");
+    printf("Life : %d\n", life );
 
     char display_map[MAP_HEIGHT][MAP_WIDTH + 1];
     for (int y = 0; y < MAP_HEIGHT; y++) {
@@ -340,8 +352,13 @@ void move_player(char input) {
             }
         }
     }
-
-    if (player_y >= MAP_HEIGHT) init_stage();
+  
+    if (player_y >= MAP_HEIGHT) {
+        player_x = start_x;
+        player_y = start_y;
+        is_jumping = 0;
+        velocity_y = 0;
+    }
 }
 
 
@@ -363,8 +380,28 @@ void check_collisions() {
     for (int i = 0; i < enemy_count; i++) {
         if (player_x == enemies[i].x && player_y == enemies[i].y) {
             score = (score > 50) ? score - 50 : 0;
-            init_stage();
-            return;
+            
+            life--;
+
+            if (life <= 0){
+                  clrscr(); 
+                  printf("Game Over\n");
+                  printf("남은 생명 : %d\n", life);
+                  printf("최종 점수 : %d\n", score);
+                  disable_raw_mode(); // raw모드 해제
+                  exit(0); 
+            }
+
+            else {
+            // 생명 남아 있으면 시작점으로 이동
+            player_x = start_x;
+            player_y = start_y;
+            
+            // 점프랑 속도 값 초기화
+            is_jumping = 0;
+            velocity_y = 0;
+        }
+         return;
         }
     }
     for (int i = 0; i < coin_count; i++) {
