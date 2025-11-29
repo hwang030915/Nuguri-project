@@ -387,7 +387,7 @@ void move_player(char input) {
         velocity_y = 0;
     }
 
-
+    if (next_x >= 0 && next_x < MAP_WIDTH && map[stage][player_y][next_x] != '#') player_x = next_x;
 }
 
 
