@@ -326,8 +326,6 @@ void move_player(char input) {
         break;
     }
 
-    if (next_x >= 0 && next_x < MAP_WIDTH && map[stage][player_y][next_x] != '#') player_x = next_x;
-
     if (on_ladder && (input == 'w' || input == 's')) {
         if (next_y >= 0 && next_y < MAP_HEIGHT && map[stage][next_y][player_x] != '#') {
             player_y = next_y;
@@ -339,46 +337,42 @@ void move_player(char input) {
     {
         if (is_jumping)
         {
-            next_y = player_y + velocity_y;
-            if (next_y < 0) next_y = 0;
+            if (velocity_y < 0)
+            {
+                next_y = player_y - 1;
+                if (next_y < 0 || (map[stage][next_y][player_x] == '#' && !on_ladder)) 
+                {
+                    is_jumping = 0;
+                    velocity_y = 0;
+                }
+                else
+                {
+                    player_y = next_y;
+                }
+            }
+            else if (velocity_y >= 0)
+            {
+                while (velocity_y > 0)
+                {
+                    next_y = player_y + 1;
+                    if (next_y >= MAP_HEIGHT || map[stage][next_y][player_x] == '#') 
+                    {
+                        is_jumping = 0;
+                        velocity_y = 0;
+                        break;
+                    }
+
+                    player_y = next_y;
+                    velocity_y--;
+                }
+
+            }
+
             velocity_y++;
 
-            if (velocity_y < 0 && next_y < MAP_HEIGHT && map[stage][next_y][player_x] == '#') {
-                velocity_y = 0;
-            }
-            else if (next_y < MAP_HEIGHT) {
-                player_y = next_y;
-            }
-
-            //바닥인지 검사 velocity_y: -2 -1 0 1 2
-            if (velocity_y > 0)
-            {
-                for (int i = 1; i <= velocity_y; i++)
-                {
-                    if (player_y + i >= MAP_HEIGHT || map[stage][player_y + i][player_x] == '#')
-                    {
-                        is_jumping = 0;
-                        velocity_y = 0;
-                        break;
-                    }
-                }
-            }
-
-            else if (velocity_y < 0)
-            {
-                for (int i = -1; i >= velocity_y; i--)
-                {
-                    if (player_y + i < 0 || map[stage][player_y + i][player_x] == '#')
-                    {
-                        velocity_y = 0;
-                        is_jumping = 0;
-                        break;
-                    }
-                }
-            }
-
         }
-        else {
+        else
+        {
             if (floor_tile != '#' && floor_tile != 'H') {
                 if (player_y + 1 < MAP_HEIGHT) player_y++;
                 else init_stage();
@@ -392,6 +386,8 @@ void move_player(char input) {
         is_jumping = 0;
         velocity_y = 0;
     }
+
+
 }
 
 
