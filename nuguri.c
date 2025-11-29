@@ -541,9 +541,11 @@ int gameover() {
     while (1) {
         char c = win_getchar();
         if (c == 'r' || c == 'R') {
+            clrscr();
             return 1; //재도전 1 반환
         }
         if (c == 'q' || c == 'Q') {
+            clrscr();
             return 0;
         }
     }
