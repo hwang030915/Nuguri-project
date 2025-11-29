@@ -61,6 +61,47 @@ int kbhit() {
 #define MAX_ENEMIES 15 // 최대 적 개수 증가
 #define MAX_COINS 30   // 최대 코인 개수 증가
 
+// 비프음 함수 정의 (os별)
+#ifdef _WIN32     
+    // 1. 코인 획득 소리: 높은 소리
+    void play_coin_sound() {
+        Beep(1000, 70);
+    }
+
+    // 2. 스테이지 클리어 소리 : 2중 음
+    void play_clear_sound() {
+        Beep(700, 100); 
+        delay(50); 
+        Beep(1200, 150); 
+    }
+
+    // 3. 충돌/데미지 소리: 낮은 소리
+    void play_damage_sound() {
+        Beep(300, 150);
+    }
+
+#else // Linux/macOS 환경
+    // POSIX 환경: 터미널 벨 문자 (\a) 사용
+    #include <unistd.h>
+    
+    // 1. 코인 획득
+    void play_coin_sound() {
+        printf("\a");
+        fflush(stdout);
+    }
+
+    // 2. 스테이지 클리어
+    void play_clear_sound() {
+        printf("\a");
+        fflush(stdout);
+    }
+
+    // 3. 충돌/데미지
+    void play_damage_sound() {
+        printf("\a");
+        fflush(stdout);
+    }
+#endif
 // 구조체 정의
 typedef struct {
     int x, y;
@@ -136,11 +177,15 @@ int main() {
 
         update_game(c);
         draw_game();
+
         delay(90);// usleep(90000) =0.09초 지연을 delay로 매핑
 
         if (map[stage][player_y][player_x] == 'E') {
             stage++;
             score += 100;
+	    //스테이지 클리어시 소리 재생
+	    play_clear_sound();
+
             if (stage < MAX_STAGES) {
                 init_stage();
             }
@@ -388,9 +433,10 @@ void check_collisions() {
     for (int i = 0; i < enemy_count; i++) {
         if (player_x == enemies[i].x && player_y == enemies[i].y) {
             score = (score > 50) ? score - 50 : 0;
-            
+ 
             life--;
-
+            play_damage_sound(); //충돌시 사운드 추가
+          
             if (life <= 0){
                   int retry = gameover();
                   if (retry == 1){ //재도전 로직
@@ -423,6 +469,10 @@ void check_collisions() {
         if (!coins[i].collected && player_x == coins[i].x && player_y == coins[i].y) {
             coins[i].collected = 1;
             score += 20;
+
+
+	    //코인 획득시 소리 재생
+	    play_coin_sound();
         }
     }
 }
