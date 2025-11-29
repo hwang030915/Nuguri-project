@@ -102,7 +102,7 @@ void move_player(char input);
 void move_enemies();
 void check_collisions();
 int kbhit();
-void clrscr(); 
+void clrscr();
 char win_getchar();
 void title(); //타이틀, 게임오버, 게임클리어 함수 선언  
 int gameover();
@@ -128,11 +128,11 @@ int main() {
     int game_over = 0;
 
     while (!game_over && stage < MAX_STAGES) {
-            c = win_getchar();
-            if (c == 'q') {
-                game_over = 1;
-                continue;
-            }
+        c = win_getchar();
+        if (c == 'q') {
+            game_over = 1;
+            continue;
+        }
 
         update_game(c);
         draw_game();
@@ -157,7 +157,7 @@ int main() {
 }
 
 char win_getchar() {  //윈도우는 raw모드가 아니라서 getchar 사용시 
-                      //화면에 입력문자가 출력되고,
+    //화면에 입력문자가 출력되고,
 #ifdef _WIN32         //엔터입력 전까지 대기가 계속되는 문제 발생
     if (_kbhit()) {   //getchar대신 _getch사용
         int ch1 = _getch();
@@ -202,7 +202,7 @@ char win_getchar() {  //윈도우는 raw모드가 아니라서 getchar 사용시
 
 //화면 지우기 
 void clrscr() {
-	printf("\x1b[2J\x1b[H");
+    printf("\x1b[2J\x1b[H");
 }
 
 // 맵 파일 로드
@@ -243,12 +243,12 @@ void init_stage() {
             if (cell == 'S') {
                 player_x = x;
                 player_y = y;
-                   
-                start_x = x;  
+
+                start_x = x;
                 start_y = y;
             }
-             else if (cell == 'X' && enemy_count < MAX_ENEMIES) {
-                enemies[enemy_count] = (Enemy){x, y, (rand() % 2) * 2 - 1};
+            else if (cell == 'X' && enemy_count < MAX_ENEMIES) {
+                enemies[enemy_count] = (Enemy){ x, y, (rand() % 2) * 2 - 1 };
                 enemy_count++;
             }
             else if (cell == 'C' && coin_count < MAX_COINS) {
@@ -263,7 +263,7 @@ void draw_game() {
     printf("\x1b[H");
     printf("Stage: %d | Score: %d\n", stage + 1, score);
     printf("조작: ← → (이동), ↑ ↓ (사다리), Space (점프), q (종료)\n");
-    printf("Life : %d\n", life );
+    printf("Life : %d\n", life);
 
     char display_map[MAP_HEIGHT][MAP_WIDTH + 1];
     for (int y = 0; y < MAP_HEIGHT; y++) {
@@ -335,8 +335,10 @@ void move_player(char input) {
             velocity_y = 0;
         }
     }
-    else {
-        if (is_jumping) {
+    else
+    {
+        if (is_jumping)
+        {
             next_y = player_y + velocity_y;
             if (next_y < 0) next_y = 0;
             velocity_y++;
@@ -348,10 +350,33 @@ void move_player(char input) {
                 player_y = next_y;
             }
 
-            if ((player_y + 1 < MAP_HEIGHT) && map[stage][player_y + 1][player_x] == '#') {
-                is_jumping = 0;
-                velocity_y = 0;
+            //바닥인지 검사 velocity_y: -2 -1 0 1 2
+            if (velocity_y > 0)
+            {
+                for (int i = 1; i <= velocity_y; i++)
+                {
+                    if (player_y + i >= MAP_HEIGHT || map[stage][player_y + i][player_x] == '#')
+                    {
+                        is_jumping = 0;
+                        velocity_y = 0;
+                        break;
+                    }
+                }
             }
+
+            else if (velocity_y < 0)
+            {
+                for (int i = -1; i >= velocity_y; i--)
+                {
+                    if (player_y + i < 0 || map[stage][player_y + i][player_x] == '#')
+                    {
+                        velocity_y = 0;
+                        is_jumping = 0;
+                        break;
+                    }
+                }
+            }
+
         }
         else {
             if (floor_tile != '#' && floor_tile != 'H') {
@@ -360,7 +385,7 @@ void move_player(char input) {
             }
         }
     }
-  
+
     if (player_y >= MAP_HEIGHT) {
         player_x = start_x;
         player_y = start_y;
@@ -388,35 +413,35 @@ void check_collisions() {
     for (int i = 0; i < enemy_count; i++) {
         if (player_x == enemies[i].x && player_y == enemies[i].y) {
             score = (score > 50) ? score - 50 : 0;
-            
+
             life--;
 
-            if (life <= 0){
-                  int retry = gameover();
-                  if (retry == 1){ //재도전 로직
+            if (life <= 0) {
+                int retry = gameover();
+                if (retry == 1) { //재도전 로직
                     life = 3;
                     score = 0;
                     stage = 0;
                     init_stage(); //1스테이지 맵 다시 로드
-                  }
-                  else{ //종료 로직
+                }
+                else { //종료 로직
                     disable_raw_mode();
                     printf("\x1b[?25h");
                     exit(0);
 
-                  }
+                }
             }
 
             else {
-            // 생명 남아 있으면 시작점으로 이동
-            player_x = start_x;
-            player_y = start_y;
-            
-            // 점프랑 속도 값 초기화
-            is_jumping = 0;
-            velocity_y = 0;
-        }
-         return;
+                // 생명 남아 있으면 시작점으로 이동
+                player_x = start_x;
+                player_y = start_y;
+
+                // 점프랑 속도 값 초기화
+                is_jumping = 0;
+                velocity_y = 0;
+            }
+            return;
         }
     }
     for (int i = 0; i < coin_count; i++) {
@@ -427,7 +452,7 @@ void check_collisions() {
     }
 }
 
-void title(){
+void title() {
     clrscr();
     printf("\n\n");
     printf("====================================================\n");
@@ -441,17 +466,17 @@ void title(){
     printf("==       아무키나 눌러 게임을 시작해보세요!       ==\n");
     printf("====================================================\n");
 
-    while(1) {
+    while (1) {
         char key = win_getchar();
-        if (key != '\0'){ //입력된 키가 있으면 루프 탈출 후 게임시작
-            break; 
+        if (key != '\0') { //입력된 키가 있으면 루프 탈출 후 게임시작
+            break;
         }
     }
     clrscr(); //게임 시작 전 타이틀 화면 지우기
 }
 
 
-int gameover(){
+int gameover() {
     clrscr();
     printf("\n\n");
     printf("====================================================\n");
@@ -467,19 +492,19 @@ int gameover(){
     printf("==                나가기 (q)                      ==\n");
     printf("====================================================\n");
 
-    while(1){
+    while (1) {
         char c = win_getchar();
-        if (c== 'r' || c== 'R'){
+        if (c == 'r' || c == 'R') {
             return 1; //재도전 1 반환
         }
-        if (c=='q' || c == 'Q'){
+        if (c == 'q' || c == 'Q') {
             return 0;
         }
     }
     return 0;
 }
 
-void gameclear(){
+void gameclear() {
     clrscr();
     printf("\n\n");
     printf("====================================================\n");
@@ -495,9 +520,9 @@ void gameclear(){
     printf("==               나가기 (q)                       ==\n");
     printf("====================================================\n");
 
-    while(1){
+    while (1) {
         char c = win_getchar();
-        if (c=='q' || c == 'Q'){
+        if (c == 'q' || c == 'Q') {
             disable_raw_mode();
             printf("\x1b[?25h");
             exit(0);
