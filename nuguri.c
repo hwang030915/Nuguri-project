@@ -207,7 +207,7 @@ char win_getchar() {  //윈도우는 raw모드가 아니라서 getchar 사용시
     if (_kbhit()) {   //getchar대신 _getch사용
         int ch1 = _getch();
 
-        if (ch1 == 0xE0) {
+        if (ch1 == 0xE0 || ch1 == 0) {
             int ch2 = _getch();
 
             switch (ch2) {
@@ -247,7 +247,11 @@ char win_getchar() {  //윈도우는 raw모드가 아니라서 getchar 사용시
 
 //화면 지우기 
 void clrscr() {
-    printf("\x1b[2J\x1b[H");
+#ifdef WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
 }
 
 // 맵 파일 로드
