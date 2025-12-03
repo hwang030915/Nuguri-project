@@ -397,20 +397,17 @@ void move_player(char input) {
             }
             else if (velocity_y > 0)
             {
-                while (velocity_y > 0)
+                next_y = player_y + 1;
+                if (next_y >= MAP_HEIGHT || map[stage][next_y][player_x] == '#') 
                 {
-                    next_y = player_y + 1;
-                    if (next_y >= MAP_HEIGHT || map[stage][next_y][player_x] == '#') 
-                    {
-                        is_jumping = 0;
-                        velocity_y = 0;
-                        break;
-                    }
-
-                    player_y = next_y;
-                    velocity_y--;
+                    is_jumping = 0;
+                    velocity_y = 0;
                 }
-
+                else
+                {
+                    player_y = next_y;
+                }
+                
             }
 
             velocity_y++;
