@@ -399,7 +399,7 @@ void move_player(char input) {
                     player_y = next_y;
                 }
             }
-            else if (velocity_y >= 0)
+            else if (velocity_y > 0)
             {
                 while (velocity_y > 0)
                 {
