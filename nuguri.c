@@ -576,13 +576,19 @@ int gameover() {
 
     while (1) {
         char c = read_key();
+
+        if ( c == '\0') continue; //입력 없는 경우 무시 
+
         if (c == 'r' || c == 'R') {
             clrscr();
             return 1; //재도전 1 반환
         }
-        if (c == 'q' || c == 'Q') {
+        else if (c == 'q' || c == 'Q') {
             clrscr();
             return 0;
+        }
+        else {
+            printf("\n!!키를 잘못 입력했습니다!! (r 또는 q를 눌러주세요)\n");
         }
     }
     return 0;
@@ -607,17 +613,21 @@ int gameclear() {
     while (1) {
         char c = read_key();
 
+        if ( c == '\0') continue; //입력 없는 경우 무시 
+
         //r 타이틀로 돌아가기
         if (c == 't' || c == 'T') {
             clrscr();
             return 1;
         }
         //q 완전 종료
-        if (c == 'q' || c == 'Q') {
-            disable_raw_mode();
-            printf("\x1b[?25h"); //종료 후 터미널에 다시 커서 보이게 하기
-            exit(0);
+        else if (c == 'q' || c == 'Q') {
+            clrscr();           
+            return 0;
 
+        }
+        else {
+            printf("\n!!키를 잘못 입력했습니다!! (t 또는 q를 눌러주세요)\n");
         }
     }
     return 0;
