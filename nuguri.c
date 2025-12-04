@@ -147,7 +147,7 @@ void clrscr();
 char win_getchar();
 void title(); //타이틀, 게임오버, 게임클리어 함수 선언  
 int gameover();
-void gameclear();
+int gameclear();
 
 int main() {
 #ifdef _WIN32
@@ -190,8 +190,20 @@ int main() {
                 init_stage();
             }
             else {
-                game_over = 1;
-                gameclear(); // 단순 출력문 지우고 클리어 함수 호출 
+                int go_title = gameclear();
+
+                if (go_title == 1){
+                    score = 0;
+                    life = 3;
+                    stage =0;
+
+                    title();
+                    init_stage();
+                    game_over = 0;
+                }
+                else {
+                    game_over = 1;
+                }
             }
         }
     }
@@ -564,7 +576,7 @@ int gameover() {
     return 0;
 }
 
-void gameclear() {
+int gameclear() {
     clrscr();
     printf("\n\n");
     printf("====================================================\n");
@@ -577,17 +589,24 @@ void gameclear() {
     printf("==------------------------------------------------==\n");
     printf("==             최종 점수 : %-5d                  ==\n", score);
     printf("==                                                ==\n");
-    printf("==               나가기 (q)                       ==\n");
+    printf("==         타이틀로 가기 (r) | 나가기 (q)      ==\n");
     printf("====================================================\n");
 
-    while (1) {
+    while (1){
         char c = win_getchar();
-        if (c == 'q' || c == 'Q') {
+        
+        //r 타이틀로 돌아가기
+        if (c=='t' || c=='T'){
+            clrscr();
+            return 1;
+        }
+        //q 완전 종료
+        if (c=='q' || c=='Q'){
             disable_raw_mode();
-            printf("\x1b[?25h");
-            exit(0);
+            printf("\x1b[?25h"); //종료 후 터미널에 다시 커서 보이게 하기
+            exit(0); 
 
         }
     }
-
+    return 0;
 }
