@@ -4,55 +4,15 @@
 #include <string.h>
 #include <time.h>
 #ifdef _WIN32
-#include <conio.h>
-#define kbhit _kbhit
-#include <windows.h>
-#define delay(ms) Sleep(ms)
-void enable_raw_mode() {} //Windows에서는 raw mode가 기본임
-void disable_raw_mode() {}
+#include <conio.h> // _kbhit(), _getch() 사용
+#include <windows.h> // Sleep(), Beep() 사용
 #else
-#include <unistd.h>
-#define delay(ms) usleep(ms*1000)
-#include <termios.h>
-#include <fcntl.h>
-
+#include <unistd.h> // usleep() 사용
+#include <termios.h> // raw mode 설정 구조체
+#include <fcntl.h> // 논블로킹 입력을 위한 파일 디스크립터 제어
 // 터미널 설정
 struct termios orig_termios;
-
-// 터미널 Raw 모드 활성화/비활성화
-void disable_raw_mode() { tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios); }
-
-void enable_raw_mode() {
-    tcgetattr(STDIN_FILENO, &orig_termios);
-    atexit(disable_raw_mode);
-    struct termios raw = orig_termios;
-    raw.c_lflag &= ~(ECHO | ICANON);
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
-}
-
-
-// 비동기 키보드 입력 확인
-int kbhit() {
-    struct termios oldt, newt;
-    int ch;
-    int oldf;
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-    ch = getchar();
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    fcntl(STDIN_FILENO, F_SETFL, oldf);
-    if (ch != EOF) {
-        ungetc(ch, stdin);
-        return 1;
-    }
-    return 0;
-}
 #endif
-
 
 // 맵 및 게임 요소 정의 (수정된 부분)
 #define MAP_WIDTH 40  // 맵 너비를 40으로 변경
@@ -61,47 +21,6 @@ int kbhit() {
 #define MAX_ENEMIES 15 // 최대 적 개수 증가
 #define MAX_COINS 30   // 최대 코인 개수 증가
 
-// 비프음 함수 정의 (os별)
-#ifdef _WIN32     
-    // 1. 코인 획득 소리: 높은 소리
-    void play_coin_sound() {
-        Beep(1000, 70);
-    }
-
-    // 2. 스테이지 클리어 소리 : 2중 음
-    void play_clear_sound() {
-        Beep(700, 100); 
-        delay(50); 
-        Beep(1200, 150); 
-    }
-
-    // 3. 충돌/데미지 소리: 낮은 소리
-    void play_damage_sound() {
-        Beep(300, 150);
-    }
-
-#else // Linux/macOS 환경
-    // POSIX 환경: 터미널 벨 문자 (\a) 사용
-    #include <unistd.h>
-    
-    // 1. 코인 획득
-    void play_coin_sound() {
-        printf("\a");
-        fflush(stdout);
-    }
-
-    // 2. 스테이지 클리어
-    void play_clear_sound() {
-        printf("\a");
-        fflush(stdout);
-    }
-
-    // 3. 충돌/데미지
-    void play_damage_sound() {
-        printf("\a");
-        fflush(stdout);
-    }
-#endif
 // 구조체 정의
 typedef struct {
     int x, y;
@@ -142,9 +61,12 @@ void update_game(char input);
 void move_player(char input);
 void move_enemies();
 void check_collisions();
-int kbhit();
+void delay(int ms);
 void clrscr();
-char win_getchar();
+char read_key();
+void play_coin_sound();
+void play_clear_sound();
+void play_damage_sound();
 void title(); //타이틀, 게임오버, 게임클리어 함수 선언  
 int gameover();
 int gameclear();
@@ -169,7 +91,7 @@ int main() {
     int game_over = 0;
 
     while (!game_over && stage < MAX_STAGES) {
-        c = win_getchar();
+        c = read_key();
         if (c == 'q') {
             game_over = 1;
             continue;
@@ -183,8 +105,8 @@ int main() {
         if (map[stage][player_y][player_x] == 'E') {
             stage++;
             score += 100;
-	    //스테이지 클리어시 소리 재생
-	    play_clear_sound();
+            //스테이지 클리어시 소리 재생
+            play_clear_sound();
 
             if (stage < MAX_STAGES) {
                 init_stage();
@@ -192,10 +114,10 @@ int main() {
             else {
                 int go_title = gameclear();
 
-                if (go_title == 1){
+                if (go_title == 1) {
                     score = 0;
                     life = 3;
-                    stage =0;
+                    stage = 0;
 
                     title();
                     init_stage();
@@ -213,33 +135,132 @@ int main() {
     return 0;
 }
 
-char win_getchar() {  //윈도우는 raw모드가 아니라서 getchar 사용시 
-    //화면에 입력문자가 출력되고,
-#ifdef _WIN32         //엔터입력 전까지 대기가 계속되는 문제 발생
-    if (_kbhit()) {   //getchar대신 _getch사용
-        int ch1 = _getch();
 
-        if (ch1 == 0xE0 || ch1 == 0) {
-            int ch2 = _getch();
+void delay(int ms){
+#ifdef _WIN32
+    Sleep(ms); // 단위 : 밀리초
+#else
+    usleep(ms * 1000); //단위 : 마이크로초, *1000을 해서 Sleep과 단위를 맞춤
+#endif
+}
+
+//화면 지우기 
+void clrscr() {
+#ifdef WIN32
+    system("cls"); // 내부명령 cmd.exe가 windows 콘솔 API를 사용하여 화면버퍼를 직접조작
+#else              // 콘솔 화면 버퍼 전체영역을 공백으로 채우고 커서를 0,0으로 되돌림
+    system("clear"); // clear는 실행파일 프로그램이며, 셸이 clear을 실행하면 ANSI 이스케이프 시퀸스를 출력함
+                     // \x1b[H\x1b[2J 커서를 1,1로 되돌림
+#endif
+}
+
+// 터미널 Raw 모드 활성화/비활성화
+void disable_raw_mode(){
+#ifndef _WIN32
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+#endif
+}
+
+void enable_raw_mode(){
+#ifndef _WIN32
+    tcgetattr(STDIN_FILENO, &orig_termios); // 현재 터미널 설정 저장
+    atexit(disable_raw_mode);               // 프로그램 종료 시 원래 모드 복구
+    struct termios raw = orig_termios;
+    raw.c_lflag &= ~(ECHO | ICANON);        // ICANON모드와 에코모드 끔
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw); // 변경한 터미널 설정 적용
+#endif
+}
+
+// 비동기 키보드 입력 확인
+int LM_kbhit(){
+#ifndef _WIN32  // Linux/mac 일 때 _kbhit() 기능을 구현
+        struct termios oldt, newt;
+        int ch;
+        int oldf;
+        tcgetattr(STDIN_FILENO, &oldt); 
+        newt = oldt;
+        newt.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+        oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+        fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+        ch = getchar();
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+        fcntl(STDIN_FILENO, F_SETFL, oldf);
+        if (ch != EOF) {
+            ungetc(ch, stdin);
+            return 1;
+        }
+        return 0;
+#endif
+}
+
+// 비프음 함수 정의 (os별)
+#ifdef _WIN32     
+    // 1. 코인 획득 소리: 높은 소리
+void play_coin_sound() {
+    Beep(1000, 70);
+}
+
+// 2. 스테이지 클리어 소리 : 2중 음
+void play_clear_sound() {
+    Beep(700, 100);
+    delay(50);
+    Beep(1200, 150);
+}
+
+// 3. 충돌/데미지 소리: 낮은 소리
+void play_damage_sound() {
+    Beep(300, 150);
+}
+
+#else // Linux/macOS 환경
+    // POSIX 환경: 터미널 벨 문자 (\a) 사용
+// 1. 코인 획득
+void play_coin_sound() {
+    printf("\a");
+    fflush(stdout);
+}
+
+// 2. 스테이지 클리어
+void play_clear_sound() {
+    printf("\a");
+    fflush(stdout);
+}
+
+// 3. 충돌/데미지
+void play_damage_sound() {
+    printf("\a");
+    fflush(stdout);
+}
+#endif
+
+char read_key() {  // 윈도우는 raw모드가 아니라서 getchar 사용시 
+                   // 엔터입력 전까지 대기가 계속되는 문제 발생
+#ifdef _WIN32
+    if (_kbhit()) { // 키보드 입력이 들어왔는지 체크
+        int ch1 = _getch(); //getchar대신 _getch사용
+                            //윈도우는 방향키 입력이 2바이트로 들어옴
+        if (ch1 == 0xE0) { //prefix(특수키)
+            int ch2 = _getch(); //2번째 바이트 실제 키 코드
 
             switch (ch2) {
-            case 72: return 'w';
-            case 80: return 's';
-            case 75: return 'a';
-            case 77: return 'd';
+            case 72: return 'w'; // up
+            case 80: return 's'; // down
+            case 75: return 'a'; // left
+            case 77: return 'd'; // right
             }
-            return '\0'; //방향키가 아니면 무시
+            return '\0'; // 방향키가 아니면 무시
         }
         return (char)ch1; //입력한 키 반환
     }
     return '\0';//입력이 없으면 입력 없음 처리
-#else
-    if (kbhit()) {
-        int ch = getchar();
+#else // Linux/mac은 방향키 입력이 ESC 시퀀스 3바이트로 들어옴
+    if (LM_kbhit()) { // 키보드 입력이 들어왔는지 체크
+        int ch = getchar(); //첫번째 바이트
 
-        if (ch == '\x1b') {
-            int ch1 = getchar();
-            int ch2 = getchar();
+        if (ch == '\x1b') { //ESC
+            int ch1 = getchar(); // 두번째 바이트
+            int ch2 = getchar(); // 세번째 바이트
 
             if (ch1 == '[') {
                 switch (ch2) {
@@ -254,15 +275,6 @@ char win_getchar() {  //윈도우는 raw모드가 아니라서 getchar 사용시
         return (char)ch;
     }
     return '\0';
-#endif
-}
-
-//화면 지우기 
-void clrscr() {
-#ifdef WIN32
-    system("cls");
-#else
-    system("clear");
 #endif
 }
 
@@ -380,9 +392,9 @@ void move_player(char input) {
     case 'w': if (on_ladder) next_y--; break;
     case 's': if (on_ladder && (player_y + 1 < MAP_HEIGHT) && map[stage][player_y + 1][player_x] != '#') next_y++; break;
     case ' ':
-        if(!on_ladder)
+        if (!on_ladder)
         {
-            if (!is_jumping && (floor_tile == '#' || on_ladder)) 
+            if (!is_jumping && (floor_tile == '#' || on_ladder))
             {
                 is_jumping = 1;
                 velocity_y = -2;
@@ -390,7 +402,7 @@ void move_player(char input) {
         }
         else
         {
-            if(map[stage][player_y - 1][player_x] == '#')
+            if (map[stage][player_y - 1][player_x] == '#')
             {
                 player_y -= 2;
             }
@@ -417,7 +429,7 @@ void move_player(char input) {
                     is_jumping = 0;
                     velocity_y = 0;
                 }
-                else 
+                else
                 {
                     player_y = next_y;
                 }
@@ -433,7 +445,7 @@ void move_player(char input) {
                         velocity_y = 0;
                         break;
                     }
-                    
+
                     player_y = next_y;
                     velocity_y--;
                 }
@@ -442,7 +454,7 @@ void move_player(char input) {
             velocity_y++;
 
         }
-        else 
+        else
         {
             if (floor_tile != '#' && floor_tile != 'H') {
                 if (player_y + 1 < MAP_HEIGHT) player_y++;
@@ -478,13 +490,13 @@ void check_collisions() {
     for (int i = 0; i < enemy_count; i++) {
         if (player_x == enemies[i].x && player_y == enemies[i].y) {
             score = (score > 50) ? score - 50 : 0;
- 
+
             life--;
             play_damage_sound(); //충돌시 사운드 추가
-          
-            if (life <= 0){
-                  int retry = gameover();
-                  if (retry == 1){ //재도전 로직
+
+            if (life <= 0) {
+                int retry = gameover();
+                if (retry == 1) { //재도전 로직
                     life = 3;
                     score = 0;
                     stage = 0;
@@ -516,8 +528,8 @@ void check_collisions() {
             score += 20;
 
 
-	    //코인 획득시 소리 재생
-	    play_coin_sound();
+            //코인 획득시 소리 재생
+            play_coin_sound();
         }
     }
 }
@@ -537,7 +549,7 @@ void title() {
     printf("====================================================\n");
 
     while (1) {
-        char key = win_getchar();
+        char key = read_key();
         if (key != '\0') { //입력된 키가 있으면 루프 탈출 후 게임시작
             break;
         }
@@ -563,7 +575,7 @@ int gameover() {
     printf("====================================================\n");
 
     while (1) {
-        char c = win_getchar();
+        char c = read_key();
         if (c == 'r' || c == 'R') {
             clrscr();
             return 1; //재도전 1 반환
@@ -589,22 +601,22 @@ int gameclear() {
     printf("==------------------------------------------------==\n");
     printf("==             최종 점수 : %-5d                  ==\n", score);
     printf("==                                                ==\n");
-    printf("==         타이틀로 가기 (r) | 나가기 (q)      ==\n");
+    printf("==         타이틀로 가기 (t) | 나가기 (q)         ==\n");
     printf("====================================================\n");
 
-    while (1){
-        char c = win_getchar();
-        
+    while (1) {
+        char c = read_key();
+
         //r 타이틀로 돌아가기
-        if (c=='t' || c=='T'){
+        if (c == 't' || c == 'T') {
             clrscr();
             return 1;
         }
         //q 완전 종료
-        if (c=='q' || c=='Q'){
+        if (c == 'q' || c == 'Q') {
             disable_raw_mode();
             printf("\x1b[?25h"); //종료 후 터미널에 다시 커서 보이게 하기
-            exit(0); 
+            exit(0);
 
         }
     }
