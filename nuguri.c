@@ -368,9 +368,20 @@ void move_player(char input) {
     case 'w': if (on_ladder) next_y--; break;
     case 's': if (on_ladder && (player_y + 1 < MAP_HEIGHT) && map[stage][player_y + 1][player_x] != '#') next_y++; break;
     case ' ':
-        if (!is_jumping && (floor_tile == '#' || on_ladder)) {
-            is_jumping = 1;
-            velocity_y = -2;
+        if(!on_ladder)
+        {
+            if (!is_jumping && (floor_tile == '#' || on_ladder)) 
+            {
+                is_jumping = 1;
+                velocity_y = -2;
+            }
+        }
+        else
+        {
+            if(map[stage][player_y - 1][player_x] == '#')
+            {
+                player_y -= 2;
+            }
         }
         break;
     }
@@ -386,38 +397,40 @@ void move_player(char input) {
     {
         if (is_jumping)
         {
-            if (velocity_y < 0)
+            if (velocity_y <= 0)
             {
                 next_y = player_y - 1;
-                if (next_y < 0 || (map[stage][next_y][player_x] == '#' && !on_ladder)) 
+                if (next_y < 0 || map[stage][next_y][player_x] == '#')
                 {
                     is_jumping = 0;
                     velocity_y = 0;
                 }
-                else
+                else 
                 {
                     player_y = next_y;
                 }
             }
+
             else if (velocity_y > 0)
             {
-                next_y = player_y + 1;
-                if (next_y >= MAP_HEIGHT || map[stage][next_y][player_x] == '#') 
+                while (velocity_y > 0)
                 {
-                    is_jumping = 0;
-                    velocity_y = 0;
-                }
-                else
-                {
+                    next_y = player_y + 1;
+                    if (next_y >= MAP_HEIGHT || map[stage][next_y][player_x] == '#') {
+                        is_jumping = 0;
+                        velocity_y = 0;
+                        break;
+                    }
+                    
                     player_y = next_y;
+                    velocity_y--;
                 }
-                
             }
 
             velocity_y++;
 
         }
-        else
+        else 
         {
             if (floor_tile != '#' && floor_tile != 'H') {
                 if (player_y + 1 < MAP_HEIGHT) player_y++;
@@ -435,8 +448,6 @@ void move_player(char input) {
 
     if (next_x >= 0 && next_x < MAP_WIDTH && map[stage][player_y][next_x] != '#') player_x = next_x;
 }
-
-
 // 적 이동 로직
 void move_enemies() {
     for (int i = 0; i < enemy_count; i++) {
